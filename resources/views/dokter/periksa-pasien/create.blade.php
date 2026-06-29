@@ -12,6 +12,14 @@
         </h2>
     </div>
 
+    {{-- Alert Error Stok Habis (dari controller) --}}
+    @error('obat')
+    <div class="alert alert-danger mb-4 rounded-xl shadow-sm" role="alert">
+        <i class="fas fa-circle-xmark"></i>
+        <span>{{ $message }}</span>
+    </div>
+    @enderror
+
     {{-- Card --}}
     <div class="card bg-base-100 shadow-sm rounded-2xl border border-slate-200">
         <div class="card-body p-8">
@@ -28,13 +36,36 @@
                     <select id="select-obat" class="select select-bordered w-full rounded-lg border-2 px-4">
                         <option value="">-- Pilih Obat --</option>
                         @foreach ($obats as $obat)
+                            @php
+                                if ($obat->stok == 0) {
+                                    $stokColor = '#9ca3af';        // gray-400 (disabled)
+                                    $stokLabel = '⚠ HABIS — tidak bisa dipilih';
+                                } elseif ($obat->stok <= 10) {
+                                    $stokColor = '#ca8a04';        // yellow-600
+                                    $stokLabel = '⚡ Stok: ' . $obat->stok;
+                                } else {
+                                    $stokColor = '#16a34a';        // green-600
+                                    $stokLabel = '✓ Stok: ' . $obat->stok;
+                                }
+                            @endphp
                             <option value="{{ $obat->id }}"
                                 data-nama="{{ $obat->nama_obat }}"
-                                data-harga="{{ $obat->harga }}">
+                                data-harga="{{ $obat->harga }}"
+                                data-stok="{{ $obat->stok }}"
+                                @if ($obat->stok == 0) disabled @endif
+                                style="color: {{ $stokColor }}; {{ $obat->stok == 0 ? 'text-decoration: line-through;' : '' }}">
                                 {{ $obat->nama_obat }} - Rp{{ number_format($obat->harga) }}
+                                &nbsp;{{ $stokLabel }}
                             </option>
                         @endforeach
                     </select>
+                    @if ($obats->where('stok', 0)->count() > 0)
+                    <p class="text-xs text-slate-500 mt-2">
+                        <i class="fas fa-info-circle"></i>
+                        {{ $obats->where('stok', 0)->count() }} obat berstatus habis (tidak bisa dipilih).
+                        Hubungi admin untuk restock.
+                    </p>
+                    @endif
                 </div>
 
                 {{-- Obat Terpilih --}}
@@ -100,8 +131,11 @@
             const id = selectedOption.value;
             const nama = selectedOption.dataset.nama;
             const harga = parseInt(selectedOption.dataset.harga || 0);
+            const stok = parseInt(selectedOption.dataset.stok || 0);
 
+            // Abaikan: placeholder, duplikat, atau stok habis (defensive)
             if (!id || daftarObat.some(o => o.id == id)) return;
+            if (stok < 1) return;
 
             daftarObat.push({ id, nama, harga });
             renderObat();
